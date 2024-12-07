@@ -1,0 +1,62 @@
+pipeline {
+    agent any
+
+    environment {
+        // Docker Hub credentials (configured in Jenkins credentials store)
+        DOCKER_CREDENTIALS = 'dockerhub-credentials-id'
+        PROD_REPO = 'ganesh20101/dev' // Docker image repository name
+        VERSION_TAG = '1.2'  // Docker image version/tag
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout the code from Git
+                git branch: 'dev', url: 'https://github.com/ganesh20101/devops-build.git'
+            }
+        }
+
+        stage('Build Image') {
+            steps {
+                script {
+                    // Make build.sh executable
+                    sh 'chmod +x build.sh'
+                    sh 'chmod +x deploy.sh'
+
+                    // Echoing the image name and tag to ensure it's correct
+                    echo "Building Docker image: ${PROD_REPO}:${VERSION_TAG}"
+
+                    // Run the build script with the image name and tag passed as arguments
+                    sh "./build.sh ${PROD_REPO} ${VERSION_TAG}"
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    // Echoing the image name and tag being pushed to Docker Hub
+                    echo "Pushing Docker image: ${PROD_REPO}:${VERSION_TAG} to Docker Hub"
+
+                    // Login to Docker Hub and push the image to the production repository
+                    docker.withRegistry('https://registry.hub.docker.com', "${DOCKER_CREDENTIALS}") {
+                        // Push the Docker image with the specified version tag
+                        docker.image("${PROD_REPO}:${VERSION_TAG}").push()
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            // Run deploy script after a successful build and push
+            sh './deploy.sh'
+            echo 'Build and push to prod repository successful'
+        }
+
+        failure {
+            echo 'Build or push failed'
+        }
+    }
+}

@@ -1,0 +1,3 @@
+GitHub url : https://github.com/ganesh20101/devops-build.git
+(dev and master branches)
+deployedbsite url : http://54.211.114.240
